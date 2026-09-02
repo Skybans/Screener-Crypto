@@ -7,6 +7,9 @@ on:
   workflow_dispatch:
     # Permet aussi de lancer le scan manuellement depuis l'onglet Actions sur GitHub
 
+permissions:
+  contents: write
+
 jobs:
   scan:
     runs-on: ubuntu-latest
