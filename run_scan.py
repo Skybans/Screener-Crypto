@@ -147,6 +147,20 @@ for nom_exchange, exchange in exchanges_ccxt.items():
     for i, symbole in enumerate(paires_spot):
         total_paires_analysees += 1
         try:
+            # ETAPE 1 : recuperation LEGERE (juste assez pour EMA/RSI) pour trier vite
+            ohlcv_leger = exchange.fetch_ohlcv(symbole, timeframe='1d', limit=30)
+            if len(ohlcv_leger) < 20:
+                continue
+
+            df_leger = pd.DataFrame(ohlcv_leger, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            ok_filtres, _ = passe_filtres(df_leger)
+            if not ok_filtres:
+                continue
+
+            time.sleep(exchange.rateLimit / 1000)
+
+            # ETAPE 2 : uniquement pour les actifs qui passent le tri, on recupere
+            # l'historique complet (plus lourd) pour l'age + la detection du W
             ohlcv = exchange.fetch_ohlcv(symbole, timeframe='1d', limit=LIMIT_BOUGIES)
             if len(ohlcv) < 30:
                 continue
@@ -158,11 +172,6 @@ for nom_exchange, exchange in exchanges_ccxt.items():
             # Filtre d'age
             age_jours = (df['date'].iloc[-1] - df['date'].iloc[0]).days
             if age_jours >= AGE_MAX_JOURS:
-                continue
-
-            # Filtres de preselection (EMA / RSI) sur les 30 dernieres bougies
-            ok_filtres, _ = passe_filtres(df.tail(30).reset_index(drop=True))
-            if not ok_filtres:
                 continue
 
             # Detection du pattern en W
