@@ -82,6 +82,19 @@ def est_actif_valide(symbole, marche, nom_exchange):
     return True
 
 
+def retirer_bougie_incomplete(df):
+    """Si la derniere bougie du DataFrame n'est pas encore terminee (sa periode
+    de 24h n'est pas ecoulee), on la retire pour ne jamais analyser une donnee
+    partielle. Fonctionne quelle que soit l'heure de cloture reelle de l'exchange."""
+    if df.empty:
+        return df
+    maintenant_ms = int(time.time() * 1000)
+    duree_bougie_ms = 24 * 60 * 60 * 1000
+    if df['timestamp'].iloc[-1] + duree_bougie_ms > maintenant_ms:
+        return df.iloc[:-1].reset_index(drop=True)
+    return df
+
+
 def envoyer_telegram(token, chat_id, message):
     """Envoie un message Telegram. Retourne True si succes."""
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -154,6 +167,9 @@ for nom_exchange, exchange in exchanges_ccxt.items():
                 continue
 
             df_leger = pd.DataFrame(ohlcv_leger, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df_leger = retirer_bougie_incomplete(df_leger)
+            if len(df_leger) < 20:
+                continue
             ok_filtres, _ = passe_filtres(df_leger)
             if not ok_filtres:
                 continue
@@ -174,6 +190,9 @@ for nom_exchange, exchange in exchanges_ccxt.items():
             df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             df['date'] = pd.to_datetime(df['timestamp'], unit='ms')
             df = df.sort_values('date').reset_index(drop=True)
+            df = retirer_bougie_incomplete(df)
+            if len(df) < 30:
+                continue
 
             # Filtre d'age
             age_jours = (df['date'].iloc[-1] - df['date'].iloc[0]).days
