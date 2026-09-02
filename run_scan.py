@@ -34,6 +34,7 @@ from detect_w_v2 import analyser_df
 AGE_MAX_JOURS = 730          # 2 ans
 RECENCY_MAX_JOURS = 30       # une validation de W niche doit dater de < 30 jours
 LIMIT_BOUGIES = 800          # historique recupere par actif (couvre l'age + le lookback)
+LIQUIDITE_MIN_USD = 500_000  # volume moyen (7 jours) minimum en dollars
 
 STABLECOINS = {
     "USDT", "USDC", "USDS", "TUSD", "PYUSD", "GHO", "RLUSD", "GUSD",
@@ -155,6 +156,11 @@ for nom_exchange, exchange in exchanges_ccxt.items():
             df_leger = pd.DataFrame(ohlcv_leger, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
             ok_filtres, _ = passe_filtres(df_leger)
             if not ok_filtres:
+                continue
+
+            # Filtre de liquidite : volume $ moyen sur les 7 derniers jours
+            volume_usd_moyen = (df_leger['volume'] * df_leger['close']).tail(7).mean()
+            if volume_usd_moyen < LIQUIDITE_MIN_USD:
                 continue
 
             time.sleep(exchange.rateLimit / 1000)
