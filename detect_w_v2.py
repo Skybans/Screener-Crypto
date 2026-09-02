@@ -109,7 +109,7 @@ def detect_macro_w(df, window=3, max_gap=60, lookback=180):
             'date_B': df['date'].iloc[idx_b], 'prix_B': prix_b,
             'niveau_618': niveau_618, 'niveau_100': niveau_100,
             'idx_leg2_start': idx_leg2_start, 'idx_leg2_end': idx_leg2_end,
-            'idx_B': idx_b,
+            'idx_A': idx_a, 'idx_B': idx_b,
         })
     return resultats
 
@@ -184,6 +184,31 @@ def analyser_actif(nom, chemin_csv):
     return
 
 
+def structure_est_haussiere(df, idx_a, idx_b, prix_a, prix_b, window=3):
+    """Rejette une structure si elle correspond a une tendance baissiere classique :
+    le point A est un creux PLUS BAS que le creux precedent, ET le point B est
+    un sommet PLUS BAS que le sommet precedent. Si les deux conditions ne sont
+    pas reunies, on considere que ce n'est pas (ou plus) une tendance baissiere claire."""
+    pivot_lows_avant = find_pivot_lows(df, start=0, end=idx_a, window=window)
+    pivot_highs_avant = find_pivot_highs(df, start=0, end=idx_a, window=window)
+
+    creux_plus_bas = False
+    sommet_plus_bas = False
+
+    if pivot_lows_avant:
+        prix_low_precedent = df['low'].iloc[pivot_lows_avant[-1]]
+        if prix_a < prix_low_precedent:
+            creux_plus_bas = True
+
+    if pivot_highs_avant:
+        prix_high_precedent = df['high'].iloc[pivot_highs_avant[-1]]
+        if prix_b < prix_high_precedent:
+            sommet_plus_bas = True
+
+    # Rejete uniquement si les DEUX conditions de la tendance baissiere sont reunies
+    return not (creux_plus_bas and sommet_plus_bas)
+
+
 def analyser_df(nom, df, recency_max_jours=30):
     """Version silencieuse : retourne les resultats sous forme de donnees
     au lieu de les afficher, pour pouvoir scanner beaucoup d'actifs d'affilee.
@@ -215,6 +240,15 @@ def analyser_df(nom, df, recency_max_jours=30):
             groupes[cle] = m
 
     candidats_finaux = sorted(groupes.values(), key=lambda m: m['date_B'], reverse=True)
+
+    # On ecarte les structures qui correspondent encore a une tendance baissiere classique
+    candidats_finaux = [
+        m for m in candidats_finaux
+        if structure_est_haussiere(df, m['idx_A'], m['idx_B'], m['prix_A'], m['prix_B'])
+    ]
+
+    if not candidats_finaux:
+        return {'nom': nom, 'statut': 'RIEN A SIGNALER', 'structures': [], 'prix_actuel': prix_actuel}
 
     structures = []
     statuts_globaux = []
