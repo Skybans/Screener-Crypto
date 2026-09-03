@@ -22,52 +22,57 @@ st.set_page_config(page_title="Crypto Scanner", page_icon="📊", layout="wide")
 CSS = """
 <style>
 .stApp {
-    background: linear-gradient(160deg, #0a0f0d 0%, #0d1a14 45%, #0a1512 100%);
+    background: radial-gradient(circle at 20% 0%, #0f1f12 0%, #05070a 55%, #030405 100%);
 }
 .carte-actif {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(34, 197, 94, 0.18);
-    border-radius: 14px;
+    background: rgba(20, 30, 22, 0.55);
+    border: 1px solid rgba(83, 252, 24, 0.25);
+    border-radius: 16px;
     padding: 18px 22px;
     margin-bottom: 12px;
-    backdrop-filter: blur(12px);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: 0 0 24px rgba(83, 252, 24, 0.06), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .badge-acheter {
-    background: rgba(34, 197, 94, 0.18);
-    color: #4ade80;
-    border: 1px solid rgba(74, 222, 128, 0.35);
-    padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    background: rgba(83, 252, 24, 0.18);
+    color: #7dff4f;
+    border: 1px solid rgba(83, 252, 24, 0.5);
+    padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    text-shadow: 0 0 8px rgba(83,252,24,0.5);
 }
 .badge-surveiller {
     background: rgba(251, 191, 36, 0.15);
     color: #fbbf24;
-    border: 1px solid rgba(251, 191, 36, 0.3);
-    padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    border: 1px solid rgba(251, 191, 36, 0.4);
+    padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;
 }
 .badge-nouveau {
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
-    border: 1px solid rgba(252, 165, 165, 0.3);
-    padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    background: rgba(239, 68, 68, 0.18);
+    color: #ff8080;
+    border: 1px solid rgba(255, 128, 128, 0.4);
+    padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700;
     margin-left: 6px;
 }
-.nom-actif { font-size: 19px; font-weight: 700; color: #f0fdf4; }
-.info-secondaire { color: #86a08f; font-size: 13px; }
+.nom-actif { font-size: 19px; font-weight: 800; color: #f0fff2; letter-spacing: 0.3px; }
+.info-secondaire { color: #7fa085; font-size: 13px; }
 
-/* Boutons style "liquid glass" */
+/* Boutons style verre "Kick" : vert neon plus marque, glow visible */
 div[data-testid="stLinkButton"] a, div.stButton > button {
-    background: linear-gradient(135deg, rgba(34,197,94,0.25), rgba(255,255,255,0.06)) !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
-    border: 1px solid rgba(255,255,255,0.18) !important;
+    background: linear-gradient(135deg, rgba(83,252,24,0.28), rgba(255,255,255,0.05)) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid rgba(83,252,24,0.45) !important;
     border-radius: 12px !important;
-    color: #eafff1 !important;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+    color: #eaffe6 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 20px rgba(83,252,24,0.12), inset 0 1px 0 rgba(255,255,255,0.15) !important;
     transition: all 0.2s ease;
 }
 div[data-testid="stLinkButton"] a:hover, div.stButton > button:hover {
-    background: linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.1)) !important;
-    border: 1px solid rgba(74,222,128,0.5) !important;
+    background: linear-gradient(135deg, rgba(83,252,24,0.5), rgba(255,255,255,0.1)) !important;
+    border: 1px solid rgba(83,252,24,0.8) !important;
+    box-shadow: 0 4px 26px rgba(83,252,24,0.3), inset 0 1px 0 rgba(255,255,255,0.2) !important;
     transform: translateY(-1px);
 }
 </style>
@@ -108,23 +113,54 @@ dates_disponibles = [
 # EN-TETE avec cloche de notification
 # ============================================================
 
-date_derniere_maj = dates_disponibles[0]
-try:
-    date_obj = datetime.strptime(date_derniere_maj, "%Y-%m-%d")
-    scan_recent = (datetime.now() - date_obj) < timedelta(hours=36)
-except Exception:
-    scan_recent = False
+FICHIER_NOTIF_LUES = "notifications_lues.json"
+
+
+def charger_notifs_lues():
+    if os.path.exists(FICHIER_NOTIF_LUES):
+        with open(FICHIER_NOTIF_LUES) as f:
+            return set(json.load(f))
+    return set()
+
+
+def sauvegarder_notifs_lues(lues):
+    with open(FICHIER_NOTIF_LUES, "w") as f:
+        json.dump(list(lues), f)
+
+
+notifs_supprimees = charger_notifs_lues()
+
+# On construit une notification par scan recent (les 10 derniers), sauf celles deja supprimees
+notifications = []
+for d in dates_disponibles[:10]:
+    if d in notifs_supprimees:
+        continue
+    df_n = pd.read_csv(f"resultats/resultats_{d}.csv")
+    nb_acheter = int((df_n['statut'] == 'A ACHETER').sum())
+    nb_surveiller = int((df_n['statut'] == 'A SURVEILLER').sum())
+    notifications.append({
+        'date': d,
+        'texte': f"Scan du {d} — {nb_acheter} à acheter, {nb_surveiller} à surveiller",
+    })
 
 col_titre, col_cloche = st.columns([6, 1])
 with col_titre:
     st.title("📊 Crypto Scanner")
     st.caption(f"Dernier scan : {date_derniere_maj}")
 with col_cloche:
-    if scan_recent:
-        st.markdown("<div style='text-align:right; font-size:32px;'>🔔<span style='color:#ef4444; font-size:14px;'>●</span></div>", unsafe_allow_html=True)
-        st.caption("Nouveau scan")
-    else:
-        st.markdown("<div style='text-align:right; font-size:32px; opacity:0.4;'>🔔</div>", unsafe_allow_html=True)
+    label_cloche = "🔔 🔴" if notifications else "🔔"
+    with st.popover(label_cloche, use_container_width=True):
+        st.markdown("**Notifications**")
+        if not notifications:
+            st.caption("Aucune nouvelle notification.")
+        else:
+            for notif in notifications:
+                col_texte, col_croix = st.columns([5, 1])
+                col_texte.write(notif['texte'])
+                if col_croix.button("✕", key=f"suppr_{notif['date']}"):
+                    notifs_supprimees.add(notif['date'])
+                    sauvegarder_notifs_lues(notifs_supprimees)
+                    st.rerun()
 
 st.divider()
 
