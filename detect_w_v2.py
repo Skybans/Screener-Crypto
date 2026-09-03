@@ -187,25 +187,24 @@ def analyser_actif(nom, chemin_csv):
 def structure_est_haussiere(df, idx_a, idx_b, prix_a, prix_b, window=3):
     """Rejette une structure si elle correspond a une tendance baissiere classique :
     le point A est un creux PLUS BAS que le creux precedent, ET le point B est
-    un sommet PLUS BAS que le sommet precedent. Si les deux conditions ne sont
-    pas reunies, on considere que ce n'est pas (ou plus) une tendance baissiere claire."""
+    un sommet PLUS BAS que le sommet precedent. Si on ne peut pas verifier
+    (pas assez d'historique avant A), on reste prudent et on rejette aussi."""
     pivot_lows_avant = find_pivot_lows(df, start=0, end=idx_a, window=window)
     pivot_highs_avant = find_pivot_highs(df, start=0, end=idx_a, window=window)
 
-    creux_plus_bas = False
-    sommet_plus_bas = False
-
     if pivot_lows_avant:
         prix_low_precedent = df['low'].iloc[pivot_lows_avant[-1]]
-        if prix_a < prix_low_precedent:
-            creux_plus_bas = True
+        creux_plus_bas = prix_a < prix_low_precedent
+    else:
+        creux_plus_bas = True  # pas assez d'historique pour confirmer -> on reste prudent
 
     if pivot_highs_avant:
         prix_high_precedent = df['high'].iloc[pivot_highs_avant[-1]]
-        if prix_b < prix_high_precedent:
-            sommet_plus_bas = True
+        sommet_plus_bas = prix_b < prix_high_precedent
+    else:
+        sommet_plus_bas = True  # idem
 
-    # Rejete uniquement si les DEUX conditions de la tendance baissiere sont reunies
+    # Rejete si les DEUX conditions de la tendance baissiere sont reunies
     return not (creux_plus_bas and sommet_plus_bas)
 
 
