@@ -113,6 +113,8 @@ dates_disponibles = [
 # EN-TETE avec cloche de notification
 # ============================================================
 
+date_derniere_maj = dates_disponibles[0]
+
 FICHIER_NOTIF_LUES = "notifications_lues.json"
 
 
