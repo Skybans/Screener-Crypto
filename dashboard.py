@@ -1,9 +1,9 @@
 """
-Tableau de bord — Crypto Scanner (v2, design pro)
+Tableau de bord — Crypto Scanner (v3)
 --------------------------------------------------------------
-Interface web privee complete : design soigne, cloche de notification,
-liens directs TradingView, recherche/tri, badge "nouveau", historique
-des scans, et suivi des actifs deja verifies.
+Corrige le bug d'affichage HTML (indentation) et le conflit de theme
+clair/sombre. Design : degrade sombre/vert, boutons "liquid glass".
+Le theme sombre est fige via .streamlit/config.toml (pas seulement du CSS).
 """
 
 import streamlit as st
@@ -16,36 +16,63 @@ from datetime import datetime, timedelta
 st.set_page_config(page_title="Crypto Scanner", page_icon="📊", layout="wide")
 
 # ============================================================
-# STYLE — theme sombre pro
+# STYLE — degrade vert sombre + boutons "liquid glass"
 # ============================================================
 
-st.markdown("""
+CSS = """
 <style>
-    .stApp { background-color: #0e1117; }
-    .carte-actif {
-        background-color: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 10px;
-        padding: 16px 20px;
-        margin-bottom: 10px;
-    }
-    .badge-acheter {
-        background-color: #1a4d2e; color: #4ade80;
-        padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    }
-    .badge-surveiller {
-        background-color: #4d3b1a; color: #fbbf24;
-        padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
-    }
-    .badge-nouveau {
-        background-color: #7f1d1d; color: #fca5a5;
-        padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600;
-        margin-left: 6px;
-    }
-    .nom-actif { font-size: 18px; font-weight: 700; color: #f0f6fc; }
-    .info-secondaire { color: #8b949e; font-size: 13px; }
+.stApp {
+    background: linear-gradient(160deg, #0a0f0d 0%, #0d1a14 45%, #0a1512 100%);
+}
+.carte-actif {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(34, 197, 94, 0.18);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 12px;
+    backdrop-filter: blur(12px);
+}
+.badge-acheter {
+    background: rgba(34, 197, 94, 0.18);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.35);
+    padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.badge-surveiller {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+    padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.badge-nouveau {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border: 1px solid rgba(252, 165, 165, 0.3);
+    padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    margin-left: 6px;
+}
+.nom-actif { font-size: 19px; font-weight: 700; color: #f0fdf4; }
+.info-secondaire { color: #86a08f; font-size: 13px; }
+
+/* Boutons style "liquid glass" */
+div[data-testid="stLinkButton"] a, div.stButton > button {
+    background: linear-gradient(135deg, rgba(34,197,94,0.25), rgba(255,255,255,0.06)) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(255,255,255,0.18) !important;
+    border-radius: 12px !important;
+    color: #eafff1 !important;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.12) !important;
+    transition: all 0.2s ease;
+}
+div[data-testid="stLinkButton"] a:hover, div.stButton > button:hover {
+    background: linear-gradient(135deg, rgba(34,197,94,0.4), rgba(255,255,255,0.1)) !important;
+    border: 1px solid rgba(74,222,128,0.5) !important;
+    transform: translateY(-1px);
+}
 </style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(CSS, unsafe_allow_html=True)
 
 # ============================================================
 # CHARGEMENT DES DONNEES
@@ -53,15 +80,18 @@ st.markdown("""
 
 FICHIER_SUIVI = "actifs_verifies.json"
 
+
 def charger_suivi():
     if os.path.exists(FICHIER_SUIVI):
         with open(FICHIER_SUIVI) as f:
             return json.load(f)
     return {}
 
+
 def sauvegarder_suivi(suivi):
     with open(FICHIER_SUIVI, "w") as f:
         json.dump(suivi, f)
+
 
 fichiers = sorted(glob.glob("resultats/resultats_*.csv"), reverse=True)
 
@@ -91,10 +121,7 @@ with col_titre:
     st.caption(f"Dernier scan : {date_derniere_maj}")
 with col_cloche:
     if scan_recent:
-        st.markdown(
-            "<div style='text-align:right; font-size:32px;'>🔔<span style='color:#ef4444; font-size:14px;'>●</span></div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("<div style='text-align:right; font-size:32px;'>🔔<span style='color:#ef4444; font-size:14px;'>●</span></div>", unsafe_allow_html=True)
         st.caption("Nouveau scan")
     else:
         st.markdown("<div style='text-align:right; font-size:32px; opacity:0.4;'>🔔</div>", unsafe_allow_html=True)
@@ -108,7 +135,6 @@ st.divider()
 date_choisie = st.selectbox("Date du scan", dates_disponibles)
 df = pd.read_csv(f"resultats/resultats_{date_choisie}.csv")
 
-# Comparaison avec le scan precedent pour le badge "nouveau"
 idx_actuel = dates_disponibles.index(date_choisie)
 actifs_nouveaux = set()
 if idx_actuel + 1 < len(dates_disponibles):
@@ -140,6 +166,7 @@ with col_recherche:
 with col_tri:
     tri = st.selectbox("Trier par", ["Alphabétique", "Prix", "Nombre d'exchanges"])
 
+
 def appliquer_tri(dataframe):
     if tri == "Prix":
         return dataframe.sort_values('prix_moyen', ascending=False)
@@ -148,6 +175,7 @@ def appliquer_tri(dataframe):
         dataframe['nb_exch'] = dataframe['exchanges'].str.count(',') + 1
         return dataframe.sort_values('nb_exch', ascending=False)
     return dataframe.sort_values('actif')
+
 
 if recherche:
     df_acheter = df_acheter[df_acheter['actif'].str.contains(recherche, case=False, na=False)]
@@ -161,6 +189,7 @@ df_surveiller = appliquer_tri(df_surveiller)
 # ============================================================
 
 PREFIXES_TV = {"OKX": "OKX", "Kraken": "KRAKEN", "Gate.io": "GATEIO"}
+
 
 def lien_tradingview(actif, exchanges):
     premier_exchange = exchanges.split(",")[0].strip()
@@ -176,8 +205,10 @@ def lien_tradingview(actif, exchanges):
 suivi = charger_suivi()
 cle_jour = date_choisie
 
+
 def est_verifie(actif):
     return suivi.get(cle_jour, {}).get(actif, False)
+
 
 def basculer_verifie(actif):
     suivi.setdefault(cle_jour, {})
@@ -186,7 +217,21 @@ def basculer_verifie(actif):
 
 # ============================================================
 # AFFICHAGE DES CARTES
+# Important : le HTML est construit SANS indentation en debut de ligne,
+# sinon Streamlit/Markdown l'interprete comme un bloc de code brut.
 # ============================================================
+
+
+def construire_carte_html(actif, badge_class, badge_texte, badge_nouveau_html, exchanges, prix):
+    lignes = [
+        '<div class="carte-actif">',
+        f'<span class="nom-actif">{actif}</span> ',
+        f'<span class="{badge_class}">{badge_texte}</span>{badge_nouveau_html}',
+        f'<br><span class="info-secondaire">{exchanges} · {prix:.6g} $</span>',
+        '</div>',
+    ]
+    return "".join(lignes)
+
 
 def afficher_cartes(dataframe, badge_class, badge_texte):
     if dataframe.empty:
@@ -196,23 +241,17 @@ def afficher_cartes(dataframe, badge_class, badge_texte):
         actif = row['actif']
         est_nouveau = actif in actifs_nouveaux
         verifie = est_verifie(actif)
+        badge_nouveau_html = ' <span class="badge-nouveau">NOUVEAU</span>' if est_nouveau else ''
 
         col_info, col_action = st.columns([5, 1])
         with col_info:
-            badge_nouveau_html = '<span class="badge-nouveau">NOUVEAU</span>' if est_nouveau else ''
-            st.markdown(f"""
-            <div class="carte-actif">
-                <span class="nom-actif">{actif}</span>
-                <span class="{badge_class}">{badge_texte}</span>
-                {badge_nouveau_html}
-                <br>
-                <span class="info-secondaire">{row['exchanges']} · {row['prix_moyen']:.6g} $</span>
-            </div>
-            """, unsafe_allow_html=True)
+            html = construire_carte_html(actif, badge_class, badge_texte, badge_nouveau_html, row['exchanges'], row['prix_moyen'])
+            st.markdown(html, unsafe_allow_html=True)
         with col_action:
-            st.link_button("📈 Graphique", lien_tradingview(actif, row['exchanges']), use_container_width=True)
+            st.link_button("📈 Graphique", lien_tradingview(actif, row['exchanges']), width="stretch")
             st.checkbox("Vérifié", value=verifie, key=f"check_{cle_jour}_{actif}",
                         on_change=basculer_verifie, args=(actif,))
+
 
 onglet_acheter, onglet_surveiller, onglet_historique = st.tabs(
     ["✅ À acheter", "👀 À surveiller", "📈 Historique"]
